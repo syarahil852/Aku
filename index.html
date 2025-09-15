@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jual Beli iPhone & MacBook</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    header { background: #007bff; color: white; padding: 1rem; text-align: center; }
+    main { display: flex; height: 90vh; }
+    #products { flex: 1; padding: 1rem; border-right: 1px solid #ccc; overflow-y: auto; }
+    #chat { flex: 1; display: flex; flex-direction: column; }
+    #chatMessages { flex: 1; padding: 1rem; border-bottom: 1px solid #ccc; overflow-y: auto; }
+    #chatInput { display: flex; }
+    #chatInput input { flex: 1; padding: 0.5rem; font-size: 1rem; }
+    #chatInput button { padding: 0.5rem 1rem; font-size: 1rem; }
+    .product { border: 1px solid #ccc; padding: 1rem; margin-bottom: 1rem; border-radius: 5px; }
+    .product h3 { margin: 0 0 0.5rem 0; }
+    .message { margin-bottom: 0.5rem; }
+    .message .sender { font-weight: bold; }
+    #loginForm, #registerForm { max-width: 300px; margin: 2rem auto; }
+    #loginForm input, #registerForm input { width: 100%; padding: 0.5rem; margin-bottom: 1rem; }
+    #loginForm button, #registerForm button { width: 100%; padding: 0.5rem; }
+    #logoutBtn { position: absolute; top: 1rem; right: 1rem; background: #dc3545; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; border-radius: 5px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Jual Beli iPhone & MacBook</h1>
+</header>
+
+<button id="logoutBtn" style="display:none;">Logout</button>
+
+<div id="authSection">
+  <form id="loginForm">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email" required />
+    <input type="password" id="loginPassword" placeholder="Password" required />
+    <button type="submit">Login</button>
+    <p>Belum punya akun? <a href="#" id="showRegister">Daftar</a></p>
+  </form>
+
+  <form id="registerForm" style="display:none;">
+    <h2>Daftar</h2>
+    <input type="email" id="registerEmail" placeholder="Email" required />
+    <input type="password" id="registerPassword" placeholder="Password" required />
+    <button type="submit">Daftar</button>
+    <p>Sudah punya akun? <a href="#" id="showLogin">Login</a></p>
+  </form>
+</div>
+
+<main style="display:none;">
+  <section id="products">
+    <h2>Produk</h2>
+    <div id="productList"></div>
+  </section>
+
+  <section id="chat">
+    <h2>Chat Pembeli & Penjual</h2>
+    <div id="chatMessages"></div>
+    <form id="chatInput">
+      <input type="text" id="messageInput" placeholder="Ketik pesan..." autocomplete="off" required />
+      <button type="submit">Kirim</button>
+    </form>
+  </section>
+</main>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<script>
+  // TODO: Ganti dengan konfigurasi Firebase project Anda
+ const firebaseConfig = {
+  apiKey: "AIzaSyDQVqmHaT0oSLC34J9Q62e7biyOdgj9DLM",
+  authDomain: "jual-beli-b2408.firebaseapp.com",
+  projectId: "jual-beli-b2408",
+  storageBucket: "jual-beli-b2408.firebasestorage.app",
+  messagingSenderId: "950479701596",
+  appId: "1:950479701596:web:b67e2bf2968f727ebbc899",
+  measurementId: "G-59CVNED56B"
+};
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const showRegister = document.getElementById('showRegister');
+  const showLogin = document.getElementById('showLogin');
+  const authSection = document.getElementById('authSection');
+  const mainSection = document.querySelector('main');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  const productList = document.getElementById('productList');
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInputForm = document.getElementById('chatInput');
+  const messageInput = document.getElementById('messageInput');
+
+  // Produk yang dijual
+  const products = [
+    { id: 'iphone', name: 'iPhone', price: 5000000 },
+    { id: 'macbook', name: 'MacBook', price: 5000000 }
+  ];
+
+  // Tampilkan produk
+  function displayProducts() {
+    productList.innerHTML = '';
+    products.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'product';
+      div.innerHTML = `
+        <h3>${p.name}</h3>
+        <p>Harga: Rp ${p.price.toLocaleString('id-ID')}</p>
+      `;
+      productList.appendChild(div);
+    });
+  }
+
+  // Toggle form register/login
+  showRegister.addEventListener('click', e => {
+    e.preventDefault();
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+  });
+  showLogin.addEventListener('click', e => {
+    e.preventDefault();
+    registerForm.style.display = 'none';
+    loginForm.style.display = 'block';
+  });
+
+  // Register user
+  registerForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(() => {
+        alert('Registrasi berhasil, silakan login.');
+        registerForm.reset();
+        registerForm.style.display = 'none';
+        loginForm.style.display = 'block';
+      })
+      .catch(err => alert(err.message));
+  });
+
+  // Login user
+  loginForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    auth.signInWithEmailAndPassword(email, password)
+      .catch(err => alert(err.message));
+  });
+
+  // Logout
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  // Saat auth state berubah
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      authSection.style.display = 'none';
+      mainSection.style.display = 'flex';
+      logoutBtn.style.display = 'block';
+      displayProducts();
+      loadChatMessages();
+    } else {
+      authSection.style.display = 'block';
+      mainSection.style.display = 'none';
+      logoutBtn.style.display = 'none';
+      chatMessages.innerHTML = '';
+    }
+  });
+
+  // Load chat messages realtime
+  function loadChatMessages() {
+    db.collection('chat')
+      .orderBy('timestamp')
+      .onSnapshot(snapshot => {
+        chatMessages.innerHTML = '';
+        snapshot.forEach(doc => {
+          const msg = doc.data();
+          const div = document.createElement('div');
+          div.className = 'message';
+          div.innerHTML = `<span class="sender">${msg.sender}:</span> ${msg.text}`;
+          chatMessages.appendChild(div);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      });
+  }
+
+  // Kirim pesan chat
+  chatInputForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = messageInput.value.trim();
+    if (!text) return;
+    const user = auth.currentUser;
+    db.collection('chat').add({
+      sender: user.email,
+      text: text,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    messageInput.value = '';
+  });
+</script>
+
+</body>
+</html>
